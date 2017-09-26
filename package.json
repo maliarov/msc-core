@@ -2,9 +2,9 @@
   "name": "msc-core",
   "version": "0.0.1",
   "description": "microservice chasis core",
-  "main": "src/index.js",
+  "main": "source/index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --config ./jest.config.json"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,14 @@
   "bugs": {
     "url": "https://github.com/mujichOk/msc-core/issues"
   },
-  "homepage": "https://github.com/mujichOk/msc-core#readme"
+  "homepage": "https://github.com/mujichOk/msc-core#readme",
+  "dependencies": {
+    "config": "1.26.2"
+  },
+  "devDependencies": {
+    "babel-jest": "21.0.2",
+    "babel-plugin-transform-object-rest-spread": "6.26.0",
+    "babel-preset-es2017": "6.24.1",
+    "jest": "21.1.0"
+  }
 }
