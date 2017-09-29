@@ -7,9 +7,11 @@ describe('config', () => {
     describe('default provider', () => {
         let microservice;
 
-        beforeAll(() => {
-            microservice = msc();
-        })
+        beforeAll(async () => {
+            microservice = await msc();
+            
+            await microservice.host();
+        });
 
         it('should return correct value', async () => {
             expect(await microservice.get('test.value')).toBe('abc');

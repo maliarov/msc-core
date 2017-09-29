@@ -5,12 +5,15 @@ describe('call', () => {
     describe('method routing', () => {
         let microservice;
 
-        beforeAll(() => {
-            microservice = msc()
+        beforeAll(async () => {
+            microservice = await msc();
+            
+            microservice
                 .use(({ value }, next) => next(null, `<${value || ''}`))
                 .use(({ value, params }, next) => next(null, `${value}${params.name}`), { method: 'addName' })
-                .use(({ value }, next) => next(null, `${value}>`))
-                ;
+                .use(({ value }, next) => next(null, `${value}>`));
+
+            await microservice.host();
         });
 
         it('should make alias for method name', () => {
