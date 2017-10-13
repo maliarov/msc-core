@@ -1,6 +1,6 @@
 {
     "collectCoverage": true,
-    "collectCoverageFrom": ["../source/**/*.js"],
+    "collectCoverageFrom": ["source/**/*.js"],
     "coverageDirectory": "../coverage", 
     "coverageThreshold": {
         "global": {
@@ -10,7 +10,6 @@
           "statements": 100
         }
     },
-
     "transform": {
         "^.+\\.js$": "babel-jest"
     }

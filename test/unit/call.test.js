@@ -9,9 +9,9 @@ describe('call', () => {
             microservice = await msc();
             
             microservice
-                .use(({ value }, next) => next(null, `<${value || ''}`))
-                .use(({ value, params }, next) => next(null, `${value}${params.name}`), { method: 'addName' })
-                .use(({ value }, next) => next(null, `${value}>`));
+                .use(({ value }) => `<${value || ''}`)
+                .use(({ value, params }) => `${value}${params.name}`, { method: 'addName' })
+                .use(({ value }) => `${value}>`);
 
             await microservice.host();
         });

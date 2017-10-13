@@ -1,20 +1,16 @@
 const assert = require('assert');
 const util = require('util');
-const async = require('async');
 
 const defaultConfigFactory = require('./defaultConfigFactory');
 
-module.exports = makeAsync(MicroserviceChassisFactory, ['opts', 'callback']);
+module.exports = MicroserviceChassisFactory;
 
 MicroserviceChassisFactory.pipelines = {
     config: 'config',
     call: 'call'
 };
 
-function MicroserviceChassisFactory({
-    configFactory = defaultConfigFactory,
-    plugins = []
-} = {}, callback) {
+async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory, plugins = [] } = {}) {
     assert(configFactory, 'configFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
@@ -23,9 +19,9 @@ function MicroserviceChassisFactory({
         .reduce((map, key) => (map[key] = []) && map, {});
 
     const context = {
-        get: makeAsync(get, ['key', 'callback']),
-        call: makeAsync(call, ['meta', 'callback']),
-        host: makeAsync(host, ['callback']),
+        get,
+        call,
+        host,
         methods: {},
         use,
         useForConfig
@@ -37,67 +33,37 @@ function MicroserviceChassisFactory({
 
     useForConfig((ctx, cb) => config.get(ctx.key, cb));
 
-    const tasks = [
-        (cb) => invokePluginMethod(plugins, 'onPreConfig', { ...context, config }, cb),
-        (cb) => invokePluginMethod(plugins, 'onPreInit', { ...context }, cb),
-    ];
-
-    async.series(tasks, (err) => callback(err, err ? null : context));
-
-    return;
+    await invokePluginMethod(plugins, 'onPreConfig', { ...context, config });
+    await invokePluginMethod(plugins, 'onPreInit', { ...context });
+    
+    return context;
 
 
-    function get(key, callback) {
-        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.config];
-        const ctx = { ...context, config, key, value: undefined };
-
+    async function get(key) {
         let deep = 0;
 
-        next(null);
+        const ctx = { ...context, config, key, value: undefined };
+        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.config];
 
-
-        function next(err, val) {
-            if (err) {
-                return callback(err);
-            }
-
-            ctx.value = val;
-
-            if (deep < pipeline.length) {
-                return process.nextTick(() => pipeline[deep++](ctx, next));
-            }
-
-            callback(err, ctx.value);
+        for (let i = 0; i < pipeline.length; i++) {
+            ctx.value = await pipeline[i](ctx);
         }
+
+        return ctx.value;
     }
 
-    function call({ method, params }, callback) {
-        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.call];
-        const ctx = { ...context, config, params: params || {}, method, value: undefined };
-
+    async function call({ method, params }) {
         let deep = 0;
 
-        next(null);
-
-
-        function next(err, val) {
-            if (err) {
-                return callback(err);
-            }
-
-            ctx.value = val;
-
-            if (deep < pipeline.length) {
-                const middleware = pipeline[deep++];
-                if (!middleware.method || middleware.method === method) {
-                    return process.nextTick(() => middleware(ctx, next));
-                }
-
-                return next(null, ctx.value);
-            }
-
-            callback(err, ctx.value);
+        const ctx = { ...context, config, params: params || {}, method, value: undefined };
+        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.call]
+                .filter((middleware) => (!middleware.method || middleware.method === method));
+        
+        for (let i = 0; i < pipeline.length; i++) {
+            ctx.value = await pipeline[i](ctx);
         }
+
+        return ctx.value;
     }
 
     function use(middleware, { pipeline = MicroserviceChassisFactory.pipelines.call, method } = {}) {
@@ -107,6 +73,7 @@ function MicroserviceChassisFactory({
         if (pipeline === MicroserviceChassisFactory.pipelines.call) {
             if (method) {
                 assert(util.isString(method), 'method should be a string');
+                
                 middleware.method = method;
 
                 if (!context.methods[method]) {
@@ -120,14 +87,10 @@ function MicroserviceChassisFactory({
         return context;
     }
 
-    function host(callback) {
-        const tasks = [
-            (cb) => invokePluginMethod(plugins, 'onConfig', { ...context, config }, cb),
-            (cb) => invokePluginMethod(plugins, 'onInit', { ...context }, cb),
-            (cb) => invokePluginMethod(plugins, 'onHost', { ...context }, cb)
-        ];
-
-        async.series(tasks, callback);
+    async function host() {
+        await invokePluginMethod(plugins, 'onConfig', { ...context, config });
+        await invokePluginMethod(plugins, 'onInit', { ...context });
+        await invokePluginMethod(plugins, 'onHost', { ...context });
     }
 
     function useForConfig(middleware, opts) {
@@ -135,75 +98,18 @@ function MicroserviceChassisFactory({
     }
 }
 
-function invokePluginMethod(plugins, methodName, params = {}, callback) {
-    const taskParams = [params];
-    const tasks = plugins.reduce((tasks, plugin) => {
+async function invokePluginMethod(plugins, methodName, params = {}) {
+    const chain = plugins.reduce((chain, plugin) => {
         const method = plugin[methodName];
-        if (util.isFunction(method)) {
-            tasks.push((cb) => method.apply(null, taskParams.concat(cb)));
-        }
-        return tasks;
+        util.isFunction(method) && chain.push(method);
+        return chain;
     }, []);
 
-    async.series(tasks, (err) => {
-        if (err) {
-            return callback(err);
+    if (chain.length) {
+        const methodParams = [params];
+
+        for (let i = 0; i < chain.length; i++) {
+            await chain[i].apply(null, methodParams);
         }
-        callback();
-    });
-}
-
-function runPipeline(pipeline) {
-    return function () {
-        const arg = arguments;
-
-        let deep = 0;
-        let value;
-
-        next.apply(null, null, [...args]);
-
-        function next(err, val) {
-            process.nextTick(() => {
-                if (err) {
-                    return callback(err);
-                }
-
-                value = val;
-
-                if (deep < pipeline.length) {
-                    return pipeline[deep++].apply(null, [...arg, next]);
-                }
-
-                callback(err, value);
-            });
-        }
-    }
-}
-
-function makeAsync(fn, params) {
-    const callbackParamIndex = params.indexOf('callback');
-
-    return function () {
-        const args = Array.prototype.slice.call(arguments);
-
-        let resolve;
-        let reject;
-
-        const promise = args[callbackParamIndex]
-            ? undefined
-            : new Promise((rs, rj) => {
-                resolve = rs;
-                reject = rj;
-            });
-
-        if (promise) {
-            args[callbackParamIndex] = (err, value) => {
-                err ? reject(err) : resolve(value);
-            };
-        }
-
-        fn.apply(null, args);
-
-        return promise;
     }
 }

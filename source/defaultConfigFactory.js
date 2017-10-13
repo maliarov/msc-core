@@ -5,12 +5,7 @@ function defaultConfigFactory() {
     const config = require('config');
     
     return {
-        get: (key, callback) => 
-            callback(null, config.get(key)),
-        
-        set: (key, value, callback) => { 
-            config.set(key, value); 
-            callback(null);
-        }
+        get: async (key) => await config.get(key),
+        set: async (key, value) => await config.set(key, value)
     };
 }

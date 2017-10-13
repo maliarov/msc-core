@@ -25,11 +25,11 @@ describe('config', () => {
 
         function TestPlugin() {
             return {
-                onPreConfig: jest.fn((opts, cb) => cb()),
-                onConfig: jest.fn((opts, cb) => cb()),
-                onPreInit: jest.fn((opts, cb) => cb()),
-                onInit: jest.fn((opts, cb) => cb()),
-                onHost: jest.fn((opts, cb) => cb())
+                onPreConfig: jest.fn((opts) => {}),
+                onConfig: jest.fn((opts) => {}),
+                onPreInit: jest.fn((optss) => {}),
+                onInit: jest.fn((opts) => {}),
+                onHost: jest.fn((opts) => {})
             };
         }
     });

@@ -38,7 +38,6 @@ describe('config', () => {
                     });
                 });
             
-
             });
     
         });
@@ -48,5 +47,5 @@ describe('config', () => {
 
 
 function simpleConfigMiddleware({value}, next) {
-    next(null, value + '1');
+    return value + '1';
 }
