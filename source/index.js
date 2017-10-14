@@ -10,8 +10,8 @@ MicroserviceChassisFactory.pipelines = {
     call: 'call'
 };
 
-async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory, plugins = [] } = {}) {
-    assert(configFactory, 'configFactory is not optinal');
+async function MicroserviceChassisFactory({ configProviderFactory = defaultConfigFactory, plugins = [] } = {}) {
+    assert(configProviderFactory, 'configProviderFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
     const middlewarePipelines = Object
@@ -19,30 +19,27 @@ async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory
         .reduce((map, key) => (map[key] = []) && map, {});
 
     const context = {
-        get,
-        call,
         host,
-        methods: {},
         use,
-        useForConfig
+        get,
+        call
     };
 
-    const config = util.isFunction(configFactory)
-        ? configFactory()
-        : configFactory;
+    context.use.config = useForConfig;
+    context.use.method = useForMethod;
+    
+    const config = configProviderFactory();
 
-    useForConfig((ctx, cb) => config.get(ctx.key, cb));
+    useForConfig(async (ctx) => await config.get(ctx.key));
 
     await invokePluginMethod(plugins, 'onPreConfig', { ...context, config });
     await invokePluginMethod(plugins, 'onPreInit', { ...context });
-    
+
     return context;
 
 
     async function get(key) {
-        let deep = 0;
-
-        const ctx = { ...context, config, key, value: undefined };
+        const ctx = { ...context, key, value: undefined };
         const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.config];
 
         for (let i = 0; i < pipeline.length; i++) {
@@ -52,13 +49,11 @@ async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory
         return ctx.value;
     }
 
-    async function call({ method, params }) {
-        let deep = 0;
-
-        const ctx = { ...context, config, params: params || {}, method, value: undefined };
+    async function call({ method, params = {} } = {}) {
+        const ctx = { ...context, params, method, value: undefined };
         const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.call]
-                .filter((middleware) => (!middleware.method || middleware.method === method));
-        
+            .filter((middleware) => (!middleware.method || middleware.method === method));
+
         for (let i = 0; i < pipeline.length; i++) {
             ctx.value = await pipeline[i](ctx);
         }
@@ -73,11 +68,11 @@ async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory
         if (pipeline === MicroserviceChassisFactory.pipelines.call) {
             if (method) {
                 assert(util.isString(method), 'method should be a string');
-                
+
                 middleware.method = method;
 
-                if (!context.methods[method]) {
-                    context.methods[method] = (meta, callback) => context.call({ ...meta, method }, callback);
+                if (!context.call[method]) {
+                    context.call[method] = async (params, opts) => await context.call({ ...opts, method, params });
                 }
             }
         }
@@ -91,14 +86,20 @@ async function MicroserviceChassisFactory({ configFactory = defaultConfigFactory
         await invokePluginMethod(plugins, 'onConfig', { ...context, config });
         await invokePluginMethod(plugins, 'onInit', { ...context });
         await invokePluginMethod(plugins, 'onHost', { ...context });
+
+        return context;
     }
 
     function useForConfig(middleware, opts) {
         return use(middleware, { ...opts, pipeline: MicroserviceChassisFactory.pipelines.config });
     }
+    function useForMethod(method, middleware, opts) {
+        return use(middleware, { ...opts, pipeline: MicroserviceChassisFactory.pipelines.call, method });
+    }
+
 }
 
-async function invokePluginMethod(plugins, methodName, params = {}) {
+async function invokePluginMethod(plugins, methodName, params) {
     const chain = plugins.reduce((chain, plugin) => {
         const method = plugin[methodName];
         util.isFunction(method) && chain.push(method);

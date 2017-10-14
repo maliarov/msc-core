@@ -9,7 +9,7 @@ describe('config', () => {
         let plugin;
         
         beforeAll(async () => {
-            plugin = TestPlugin();
+            plugin = testPluginFactory();
             microservice = await msc({plugins: [plugin]});
 
             await microservice.host();
@@ -23,11 +23,11 @@ describe('config', () => {
             expect(plugin.onHost.mock.calls.length).toBe(1);
         });
 
-        function TestPlugin() {
+        function testPluginFactory() {
             return {
                 onPreConfig: jest.fn((opts) => {}),
                 onConfig: jest.fn((opts) => {}),
-                onPreInit: jest.fn((optss) => {}),
+                onPreInit: jest.fn((opts) => {}),
                 onInit: jest.fn((opts) => {}),
                 onHost: jest.fn((opts) => {})
             };
