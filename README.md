@@ -4,24 +4,30 @@
 
 ```js
   const msc = require('msc-core');
-  const mongoConfigProvider = require('msc-plugin-mongo-config');
+  const mongoConfigProviderFactory = require('msc-config-mongo');
   const express = require('msc-plugin-express');
   const security = require('some-security-middleware-module');
   
-  const microservice = msc({configProvider: mongoConfigProvider})
-    .useInConfig(resolveEnvMiddleware)
-    .use(securityMiddleware);
-    .use(msc.fascade(express));
-    .use(pingMiddleware, {method: 'ping', transport: { verb: 'GET' }});
-  
-  microservice.run();
-  
-  
-  function resolveEnvMiddleware(key, value, {config}, next) {
-    next(null, `${proces.env.NODE_ENV}.${value}`);
+  const opts = {
+    configProviderFactory: mongoConfigProviderFactory, 
+    plugins: [express()]
   }
   
-  function pingMiddleware({params}, next) {
-    next(null, 'OK');
+  const microservice = await msc(opts);
+
+
+  microservice.use.config(resolveEnvMiddleware)
+    .use(securityMiddleware);
+    .use.method('ping', pingMiddleware, {express: { verb: 'GET' }});
+
+  await microservice.run();
+
+
+  function resolveEnvMiddleware(key, value, {config}) {
+    return `${proces.env.NODE_ENV}.${value}`;
+  }
+  
+  function pingMiddleware({params}) {
+    return 'OK';
   }
 ```
