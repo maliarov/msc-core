@@ -22,12 +22,17 @@ describe('call', () => {
                 .use.method('addName', middlewares.c)
                 .use(middlewares.d);
 
-            await microservice.host();
+            await microservice.start();
+        });
+
+        afterAll(async () => {
+            await microservice.stop();
         });
 
         beforeAll(async () => {
             valueA = await microservice.call();
         });
+
         beforeAll(async () => {
             valueWithRoute = await microservice.call.addName({ name: 'test' });
         });

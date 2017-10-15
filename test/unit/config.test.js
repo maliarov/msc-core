@@ -12,8 +12,13 @@ describe('config', () => {
 
             beforeAll(async () => {
                 microservice = await msc();
-                await microservice.host();
+                await microservice.start();
             });
+
+            afterAll(async () => {
+                await microservice.stop();
+            });
+    
 
             beforeAll(async () => {
                 value = await microservice.get('test.value');
@@ -63,7 +68,11 @@ describe('config', () => {
 
         beforeAll(async () => {
             microservice = await msc({ configProviderFactory: customerConfigProviderFactory });
-            await microservice.host();
+            await microservice.start();
+        });
+
+        afterAll(async () => {
+            await microservice.stop();
         });
 
         beforeAll(async () => {
@@ -74,6 +83,7 @@ describe('config', () => {
             expect(configProvider.get.mock.calls.length).toBe(1);
         });
 
+        
         function customerConfigProviderFactory() {
             configProvider = {
                 get: jest.fn((key) => { })

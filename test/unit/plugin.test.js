@@ -12,7 +12,11 @@ describe('config', () => {
             plugin = testPluginFactory();
             microservice = await msc({plugins: [plugin]});
 
-            await microservice.host();
+            await microservice.start();
+        });
+
+        beforeAll(async () => {
+            await microservice.stop();
         });
 
         it('should call all 4 methods of plugin', () => {
@@ -20,7 +24,8 @@ describe('config', () => {
             expect(plugin.onConfig.mock.calls.length).toBe(1);
             expect(plugin.onPreInit.mock.calls.length).toBe(1);
             expect(plugin.onInit.mock.calls.length).toBe(1);
-            expect(plugin.onHost.mock.calls.length).toBe(1);
+            expect(plugin.onStart.mock.calls.length).toBe(1);
+            expect(plugin.onStop.mock.calls.length).toBe(1);
         });
 
         function testPluginFactory() {
@@ -29,7 +34,8 @@ describe('config', () => {
                 onConfig: jest.fn((opts) => {}),
                 onPreInit: jest.fn((opts) => {}),
                 onInit: jest.fn((opts) => {}),
-                onHost: jest.fn((opts) => {})
+                onStart: jest.fn((opts) => {}),
+                onStop: jest.fn((opts) => {})
             };
         }
     });

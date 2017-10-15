@@ -3,14 +3,15 @@ const util = require('util');
 
 const defaultConfigFactory = require('./defaultConfigFactory');
 
-module.exports = MicroserviceChassisFactory;
+module.exports = microserviceChassisFactory;
 
-MicroserviceChassisFactory.pipelines = {
+microserviceChassisFactory.pipelines = {
     config: 'config',
     call: 'call'
 };
 
-async function MicroserviceChassisFactory({ configProviderFactory = defaultConfigFactory, plugins = [] } = {}) {
+
+async function microserviceChassisFactory({ configProviderFactory = defaultConfigFactory, plugins = [] } = {}) {
     assert(configProviderFactory, 'configProviderFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
@@ -18,11 +19,13 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
     plugins = plugins.reduce((plugins, plugin) => plugins.concat(plugin), []);
     
     const middlewarePipelines = Object
-        .keys(MicroserviceChassisFactory.pipelines)
+        .keys(microserviceChassisFactory.pipelines)
         .reduce((map, key) => (map[key] = []) && map, {});
 
     const context = {
-        host,
+        start,
+        stop,
+        
         use,
         get,
         call
@@ -43,7 +46,7 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
 
     async function get(key) {
         const ctx = { ...context, key, value: undefined };
-        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.config];
+        const pipeline = middlewarePipelines[microserviceChassisFactory.pipelines.config];
 
         for (let i = 0; i < pipeline.length; i++) {
             ctx.value = await pipeline[i](ctx);
@@ -54,7 +57,7 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
 
     async function call({ method, params = {} } = {}) {
         const ctx = { ...context, params, method, value: undefined };
-        const pipeline = middlewarePipelines[MicroserviceChassisFactory.pipelines.call]
+        const pipeline = middlewarePipelines[microserviceChassisFactory.pipelines.call]
             .filter((middleware) => (!middleware.method || middleware.method === method));
 
         for (let i = 0; i < pipeline.length; i++) {
@@ -64,11 +67,11 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
         return ctx.value;
     }
 
-    function use(middleware, { pipeline = MicroserviceChassisFactory.pipelines.call, method } = {}) {
+    function use(middleware, { pipeline = microserviceChassisFactory.pipelines.call, method } = {}) {
         assert(util.isFunction(middleware), 'middleware should be a function');
-        assert(MicroserviceChassisFactory.pipelines[pipeline], 'unknown pipeline type');
+        assert(microserviceChassisFactory.pipelines[pipeline], 'unknown pipeline type');
 
-        if (pipeline === MicroserviceChassisFactory.pipelines.call) {
+        if (pipeline === microserviceChassisFactory.pipelines.call) {
             if (method) {
                 assert(util.isString(method), 'method should be a string');
 
@@ -85,19 +88,25 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
         return context;
     }
 
-    async function host() {
+    async function start() {
         await invokePluginMethod(plugins, 'onConfig', { context, config });
         await invokePluginMethod(plugins, 'onInit', context);
-        await invokePluginMethod(plugins, 'onHost', context);
+        await invokePluginMethod(plugins, 'onStart', context);
+
+        return context;
+    }
+
+    async function stop() {
+        await invokePluginMethod(plugins, 'onStop', context);
 
         return context;
     }
 
     function useForConfig(middleware, opts) {
-        return use(middleware, { ...opts, pipeline: MicroserviceChassisFactory.pipelines.config });
+        return use(middleware, { ...opts, pipeline: microserviceChassisFactory.pipelines.config });
     }
     function useForMethod(method, middleware, opts) {
-        return use(middleware, { ...opts, pipeline: MicroserviceChassisFactory.pipelines.call, method });
+        return use(middleware, { ...opts, pipeline: microserviceChassisFactory.pipelines.call, method });
     }
 
 }
