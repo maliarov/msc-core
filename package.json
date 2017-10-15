@@ -2,8 +2,9 @@
   "name": "msc-core",
   "version": "0.0.1",
   "description": "microservice chasis core",
-  "main": "source/index.js",
+  "main": "build/index.js",
   "scripts": {
+    "build": "rm -rf build && babel source --out-dir build --source-maps",
     "test": "jest --config ./jest.config.json"
   },
   "repository": {

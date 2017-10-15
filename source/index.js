@@ -14,6 +14,9 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
     assert(configProviderFactory, 'configProviderFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
+    // note: if plugin is array then it is preset
+    plugins = plugins.reduce((plugins, plugin) => plugins.concat(plugin), []);
+    
     const middlewarePipelines = Object
         .keys(MicroserviceChassisFactory.pipelines)
         .reduce((map, key) => (map[key] = []) && map, {});
@@ -32,8 +35,8 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
 
     useForConfig(async (ctx) => await config.get(ctx.key));
 
-    await invokePluginMethod(plugins, 'onPreConfig', { ...context, config });
-    await invokePluginMethod(plugins, 'onPreInit', { ...context });
+    await invokePluginMethod(plugins, 'onPreConfig', { context, config });
+    await invokePluginMethod(plugins, 'onPreInit', context);
 
     return context;
 
@@ -83,9 +86,9 @@ async function MicroserviceChassisFactory({ configProviderFactory = defaultConfi
     }
 
     async function host() {
-        await invokePluginMethod(plugins, 'onConfig', { ...context, config });
-        await invokePluginMethod(plugins, 'onInit', { ...context });
-        await invokePluginMethod(plugins, 'onHost', { ...context });
+        await invokePluginMethod(plugins, 'onConfig', { context, config });
+        await invokePluginMethod(plugins, 'onInit', context);
+        await invokePluginMethod(plugins, 'onHost', context);
 
         return context;
     }
