@@ -97,6 +97,6 @@ describe('config', () => {
 });
 
 
-function simpleConfigMiddleware({ value }, next) {
+function simpleConfigMiddleware({ value }) {
     return value + '1';
 }

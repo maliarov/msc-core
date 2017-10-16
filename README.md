@@ -15,19 +15,14 @@
   
   const microservice = await msc(opts);
 
+  await microservice
+    .use.config(resolveEnvMiddleware)
+    .use(securityMiddleware)
+    .use.method('ping', () => 'OK', {express: { verb: 'get', route: '/api/ping' }});
+    .start();
 
-  microservice.use.config(resolveEnvMiddleware)
-    .use(securityMiddleware);
-    .use.method('ping', pingMiddleware, {express: { verb: 'GET' }});
 
-  await microservice.run();
-
-
-  function resolveEnvMiddleware(key, value, {config}) {
+  function resolveEnvMiddleware({ value, config }) {
     return `${proces.env.NODE_ENV}.${value}`;
-  }
-  
-  function pingMiddleware({params}) {
-    return 'OK';
   }
 ```
