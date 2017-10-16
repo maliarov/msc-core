@@ -67,19 +67,22 @@ async function microserviceChassisFactory({ configProviderFactory = defaultConfi
         return ctx.value;
     }
 
-    function use(middleware, { pipeline = microserviceChassisFactory.pipelines.call, method } = {}) {
+    function use(middleware, { pipeline = microserviceChassisFactory.pipelines.call, method, ...otherOpts } = {}) {
         assert(util.isFunction(middleware), 'middleware should be a function');
         assert(microserviceChassisFactory.pipelines[pipeline], 'unknown pipeline type');
 
         if (pipeline === microserviceChassisFactory.pipelines.call) {
             if (method) {
-                assert(util.isString(method), 'method should be a string');
+                assert(util.isString(method), 'method name should be a string');
 
                 middleware.method = method;
 
                 if (!context.call[method]) {
-                    context.call[method] = async (params, opts) => await context.call({ ...opts, method, params });
+                    context.call[method] = (params, opts) => context.call({ ...opts, method, params, meta: context.call[method].meta });
+                    context.call[method].meta = {};
                 }
+
+                context.call[method].meta = Object.assign(context.call[method].meta, otherOpts);
             }
         }
 

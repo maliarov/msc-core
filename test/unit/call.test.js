@@ -8,8 +8,8 @@ describe('call', () => {
 
         const middlewares = {
             a: jest.fn(({ value }) => `<${value || ''}`),
-            b: jest.fn(({ value, params }) => `${value}${params.name}`),
-            c: jest.fn(({ value, params }) => `${value}|${params.name}`),
+            b: jest.fn(({ value, params }) => `${value}${params.value}`),
+            c: jest.fn(({ value, params }) => `${value}|${params.value}`),
             d: jest.fn(({ value }) => new Promise((resolve, reject) => setTimeout(() => resolve(`${value}>`), 100)))
         };
         
@@ -18,8 +18,8 @@ describe('call', () => {
 
             microservice
                 .use(middlewares.a)
-                .use.method('addName', middlewares.b)
-                .use.method('addName', middlewares.c)
+                .use.method('join', middlewares.b, {a: 1})
+                .use.method('join', middlewares.c, {b: 2})
                 .use(middlewares.d);
 
             await microservice.start();
@@ -34,7 +34,7 @@ describe('call', () => {
         });
 
         beforeAll(async () => {
-            valueWithRoute = await microservice.call.addName({ name: 'test' });
+            valueWithRoute = await microservice.call.join({ value: 'test' });
         });
         
         it('should call each method from middleware chain', () => {
@@ -45,7 +45,9 @@ describe('call', () => {
         });
 
         it('should make alias for method name', () => {
-            expect(microservice.call).toHaveProperty('addName');
+            expect(microservice.call).toHaveProperty('join');
+            expect(microservice.call.join).toHaveProperty('meta.a', 1);
+            expect(microservice.call.join).toHaveProperty('meta.b', 2);
         });
 
         it('should skip name param in no method name provided', async () => {
