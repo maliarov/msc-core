@@ -4,12 +4,12 @@
 
 ```js
   const msc = require('msc-core');
-  const mongoConfigProviderFactory = require('msc-config-mongo');
+  const mongoConfig = require('msc-config-mongo');
   const express = require('msc-plugin-express');
   const security = require('some-security-middleware-module');
   
   const opts = {
-    configProviderFactory: mongoConfigProviderFactory, 
+    configProvider: mongoConfig(),
     plugins: [express()]
   }
   
