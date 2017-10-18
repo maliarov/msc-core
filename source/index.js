@@ -1,7 +1,7 @@
 const assert = require('assert');
 const util = require('util');
 
-const defaultConfigFactory = require('./defaultConfigFactory');
+const defaultConfigFactory = () => require('./defaultConfigFactory')();
 
 module.exports = microserviceChassisFactory;
 
@@ -11,13 +11,13 @@ microserviceChassisFactory.pipelines = {
 };
 
 
-async function microserviceChassisFactory({ configProviderFactory = defaultConfigFactory, plugins = [] } = {}) {
-    assert(configProviderFactory, 'configProviderFactory is not optinal');
+async function microserviceChassisFactory({ configProvider = defaultConfigFactory(), plugins = [] } = {}) {
+    assert(configProvider, 'configProviderFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
     // note: if plugin is array then it is preset
     plugins = plugins.reduce((plugins, plugin) => plugins.concat(plugin), []);
-    
+
     const middlewarePipelines = Object
         .keys(microserviceChassisFactory.pipelines)
         .reduce((map, key) => (map[key] = []) && map, {});
@@ -25,7 +25,7 @@ async function microserviceChassisFactory({ configProviderFactory = defaultConfi
     const context = {
         start,
         stop,
-        
+
         use,
         get,
         call
@@ -33,10 +33,10 @@ async function microserviceChassisFactory({ configProviderFactory = defaultConfi
 
     context.use.config = useForConfig;
     context.use.method = useForMethod;
-    
-    const config = configProviderFactory();
 
-    useForConfig(async (ctx) => await config.get(ctx.key));
+    const config = configProvider;
+
+    useForConfig(async ({key}) => ({ value: await config.get(key) }));
 
     await invokePluginMethod(plugins, 'onPreConfig', { context, config });
     await invokePluginMethod(plugins, 'onPreInit', context);
@@ -49,7 +49,10 @@ async function microserviceChassisFactory({ configProviderFactory = defaultConfi
         const pipeline = middlewarePipelines[microserviceChassisFactory.pipelines.config];
 
         for (let i = 0; i < pipeline.length; i++) {
-            ctx.value = await pipeline[i](ctx);
+            const { key, value } = (await pipeline[i](ctx)) || {};
+
+            ctx.key = key === undefined ? ctx.key : key;
+            ctx.value = value;
         }
 
         return ctx.value;

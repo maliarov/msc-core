@@ -11,14 +11,13 @@ describe('config', () => {
             let value;
 
             beforeAll(async () => {
-                microservice = await msc();
-                await microservice.start();
+                microservice = await (await msc()).start();
             });
 
             afterAll(async () => {
                 await microservice.stop();
             });
-    
+
 
             beforeAll(async () => {
                 value = await microservice.get('test.value');
@@ -67,8 +66,8 @@ describe('config', () => {
         let configProvider;
 
         beforeAll(async () => {
-            microservice = await msc({ configProviderFactory: customerConfigProviderFactory });
-            await microservice.start();
+            microservice = await (await msc({ configProvider: customerConfigProviderFactory() }))
+                .start();
         });
 
         afterAll(async () => {
@@ -83,20 +82,20 @@ describe('config', () => {
             expect(configProvider.get.mock.calls.length).toBe(1);
         });
 
-        
+
         function customerConfigProviderFactory() {
             configProvider = {
-                get: jest.fn((key) => { })
+                get: jest.fn(({key, value}) => {key, value})
             };
 
             return configProvider;
         }
-        
+
     });
 
 });
 
 
 function simpleConfigMiddleware({ value }) {
-    return value + '1';
+    return { value: value + '1' };
 }

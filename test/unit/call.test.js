@@ -15,7 +15,7 @@ describe('call', () => {
         
         beforeAll(async () => {
             microservice = await msc();
-
+ 
             microservice
                 .use(middlewares.a)
                 .use.method('join', middlewares.b, {a: 1})
