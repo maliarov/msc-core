@@ -7,19 +7,20 @@ describe('call', () => {
         let value, valueWithRoute;
 
         const middlewares = {
-            a: jest.fn(({ value }) => `<${value || ''}`),
-            b: jest.fn(({ value, params }) => `${value}${params.value}`),
-            c: jest.fn(({ value, params }) => `${value}|${params.value}`),
-            d: jest.fn(({ value }) => new Promise((resolve, reject) => setTimeout(() => resolve(`${value}>`), 100)))
+            a: jest.fn((args, { value }) => `<${value || ''}`),
+            b: jest.fn((args, { value }) => `${value}${args.text}`),
+            c: jest.fn((args, { value }) => `${value}|${args.text}`),
+            d: jest.fn((args, { value }) => new Promise((resolve) =>
+                setTimeout(() => resolve(`${value}>`), 100))
+            )
         };
-        
+
         beforeAll(async () => {
             microservice = await msc();
- 
+
             microservice
                 .use(middlewares.a)
-                .use.method('join', middlewares.b, {a: 1})
-                .use.method('join', middlewares.c, {b: 2})
+                .use.method('join', [middlewares.b, middlewares.c], { someMetaProperty: 'some meta property value' })
                 .use(middlewares.d);
 
             await microservice.start();
@@ -34,9 +35,9 @@ describe('call', () => {
         });
 
         beforeAll(async () => {
-            valueWithRoute = await microservice.call.join({ value: 'test' });
+            valueWithRoute = await microservice.call.join({ text: 'test' });
         });
-        
+
         it('should call each method from middleware chain', () => {
             expect(middlewares.a.mock.calls.length).toBe(2);
             expect(middlewares.b.mock.calls.length).toBe(1);
@@ -46,8 +47,7 @@ describe('call', () => {
 
         it('should make alias for method name', () => {
             expect(microservice.call).toHaveProperty('join');
-            expect(microservice.call.join).toHaveProperty('meta.a', 1);
-            expect(microservice.call.join).toHaveProperty('meta.b', 2);
+            expect(microservice.call.join).toHaveProperty('meta.someMetaProperty', 'some meta property value');
         });
 
         it('should skip name param in no method name provided', async () => {

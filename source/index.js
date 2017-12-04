@@ -11,7 +11,11 @@ microserviceChassisFactory.pipelines = {
     call: 'call'
 };
 
-async function microserviceChassisFactory({ configProvider = defaultConfigFactory(), plugins = [] } = {}) {
+async function microserviceChassisFactory({
+    configProvider = defaultConfigFactory(),
+
+    plugins = []
+} = {}) {
     assert(configProvider, 'configProviderFactory is not optinal');
     assert(util.isArray(plugins), 'plugins should be an array');
 
@@ -58,40 +62,50 @@ async function microserviceChassisFactory({ configProvider = defaultConfigFactor
         return ctx.value;
     }
 
-    async function call({ method, params = {} } = {}) {
-        const ctx = Object.assign({}, context, { params, method, value: undefined });
+    async function call(args = {}, { method } = {}) {
+        const ctx = Object.assign({}, context, { method, value: undefined });
         const pipeline = middlewarePipelines[microserviceChassisFactory.pipelines.call]
             .filter((middleware) => (!middleware.method || middleware.method === method));
 
+        await invokePluginMethod(plugins, 'onInitMethodContext', { method, args, context: ctx });
+
         for (let i = 0; i < pipeline.length; i++) {
-            ctx.value = await pipeline[i](ctx);
+            ctx.value = await pipeline[i](args, ctx);
         }
 
         return ctx.value;
     }
 
-    function use(middleware, options = {pipeline: microserviceChassisFactory.pipelines.call}) {
+    function use(middlewares, options = { pipeline: microserviceChassisFactory.pipelines.call }) {
         const { pipeline, method } = options;
 
-        assert(util.isFunction(middleware), 'middleware should be a function');
-        assert(microserviceChassisFactory.pipelines[pipeline], 'unknown pipeline type');
-
-        if (pipeline === microserviceChassisFactory.pipelines.call) {
-            if (method) {
-                assert(util.isString(method), 'method name should be a string');
-
-                middleware.method = method;
-
-                if (!context.call[method]) {
-                    context.call[method] = (params, opts = {}) => context.call(Object.assign({}, opts, { method, params, meta: context.call[method].meta }));
-                    context.call[method].meta = {};
-                }
-
-                context.call[method].meta = Object.assign(context.call[method].meta, options);
-            }
+        if (!util.isArray(middlewares)) {
+            middlewares = [middlewares];
         }
 
-        middlewarePipelines[pipeline].push(middleware);
+        assert(microserviceChassisFactory.pipelines[pipeline], 'unknown pipeline type');
+
+        middlewares.forEach((middleware, index) => {
+            assert(util.isFunction(middleware), `middleware.${index} should be function`)
+
+            if (pipeline === microserviceChassisFactory.pipelines.call) {
+                if (method) {
+                    assert(util.isString(method), 'method name should be a string');
+    
+                    middleware.method = method;
+    
+                    if (!context.call[method]) {
+                        context.call[method] = (args, opts = {}) =>
+                            context.call(args, Object.assign({}, opts, { method, meta: context.call[method].meta }));
+                        context.call[method].meta = {};
+                    }
+    
+                    context.call[method].meta = Object.assign(context.call[method].meta, options);
+                }
+            }
+
+            middlewarePipelines[pipeline].push(middleware)
+        });
 
         return context;
     }
@@ -119,7 +133,7 @@ async function microserviceChassisFactory({ configProvider = defaultConfigFactor
 
 }
 
-async function invokePluginMethod(plugins, methodName, params) {
+async function invokePluginMethod(plugins, methodName, args) {
     const chain = plugins.reduce((chain, plugin) => {
         const method = plugin[methodName];
         util.isFunction(method) && chain.push(method);
@@ -127,7 +141,7 @@ async function invokePluginMethod(plugins, methodName, params) {
     }, []);
 
     if (chain.length) {
-        const methodParams = [params];
+        const methodParams = [args];
 
         for (let i = 0; i < chain.length; i++) {
             await chain[i].apply(null, methodParams);
