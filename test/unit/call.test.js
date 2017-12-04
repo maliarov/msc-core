@@ -4,13 +4,13 @@ describe('call', () => {
 
     describe('method routing', () => {
         let microservice;
-        let value, valueWithRoute;
+        let resultOfMethodCall;
 
         const middlewares = {
-            a: jest.fn((args, { value }) => `<${value || ''}`),
-            b: jest.fn((args, { value }) => `${value}${args.text}`),
-            c: jest.fn((args, { value }) => `${value}|${args.text}`),
-            d: jest.fn((args, { value }) => new Promise((resolve) =>
+            a: jest.fn((text, { value }) => `<${value || ''}`),
+            b: jest.fn((text, { value }) => `${value}${text}`),
+            c: jest.fn((text, { value }) => `${value}|${text}`),
+            d: jest.fn((text, { value }) => new Promise((resolve) =>
                 setTimeout(() => resolve(`${value}>`), 100))
             )
         };
@@ -31,18 +31,14 @@ describe('call', () => {
         });
 
         beforeAll(async () => {
-            valueA = await microservice.call();
-        });
-
-        beforeAll(async () => {
-            valueWithRoute = await microservice.call.join({ text: 'test' });
+            resultOfMethodCall = await microservice.call.join('test');
         });
 
         it('should call each method from middleware chain', () => {
-            expect(middlewares.a.mock.calls.length).toBe(2);
+            expect(middlewares.a.mock.calls.length).toBe(1);
             expect(middlewares.b.mock.calls.length).toBe(1);
             expect(middlewares.c.mock.calls.length).toBe(1);
-            expect(middlewares.d.mock.calls.length).toBe(2);
+            expect(middlewares.d.mock.calls.length).toBe(1);
         });
 
         it('should make alias for method name', () => {
@@ -50,12 +46,8 @@ describe('call', () => {
             expect(microservice.call.join).toHaveProperty('meta.someMetaProperty', 'some meta property value');
         });
 
-        it('should skip name param in no method name provided', async () => {
-            expect(valueA).toBe('<>');
-        });
-
         it('should use name param in method name defined', async () => {
-            expect(valueWithRoute).toBe('<test|test>');
+            expect(resultOfMethodCall).toBe('<test|test>');
         });
 
     });

@@ -32,7 +32,7 @@ async function microserviceChassisFactory({
 
         use,
         get,
-        call
+        call: {}
     };
 
     context.use.config = useForConfig;
@@ -62,15 +62,22 @@ async function microserviceChassisFactory({
         return ctx.value;
     }
 
-    async function call(args = {}, { method } = {}) {
+    async function call(...args) {
+        const options = args[args.length - 1];
+        const { method } = options;
+
+        args = args.slice(0, args.length - 1);
+
         const ctx = Object.assign({}, context, { method, value: undefined });
         const pipeline = middlewarePipelines[microserviceChassisFactory.pipelines.call]
             .filter((middleware) => (!middleware.method || middleware.method === method));
 
         await invokePluginMethod(plugins, 'onInitMethodContext', { method, args, context: ctx });
 
+        args = args.concat(ctx);
+
         for (let i = 0; i < pipeline.length; i++) {
-            ctx.value = await pipeline[i](args, ctx);
+            ctx.value = await pipeline[i].apply(null, args);
         }
 
         return ctx.value;
@@ -91,15 +98,15 @@ async function microserviceChassisFactory({
             if (pipeline === microserviceChassisFactory.pipelines.call) {
                 if (method) {
                     assert(util.isString(method), 'method name should be a string');
-    
+
                     middleware.method = method;
-    
+
                     if (!context.call[method]) {
-                        context.call[method] = (args, opts = {}) =>
-                            context.call(args, Object.assign({}, opts, { method, meta: context.call[method].meta }));
+                        context.call[method] = (...args) =>
+                            call.apply(null, args.concat({ method, meta: context.call[method].meta }));
                         context.call[method].meta = {};
                     }
-    
+
                     context.call[method].meta = Object.assign(context.call[method].meta, options);
                 }
             }
