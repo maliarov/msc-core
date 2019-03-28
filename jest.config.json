@@ -1,13 +1,28 @@
 {
+    "roots": [
+        "<rootDir>/test"
+    ],
+    "testRegex": "^.+\\.spec\\.ts$",
+    "transform": {
+        "^.+\\.ts$": "ts-jest"
+    },
     "collectCoverage": true,
-    "collectCoverageFrom": ["source/**/*.js"],
-    "coverageDirectory": "../coverage", 
+    "collectCoverageFrom": [
+        "src/**/*.ts"
+    ],
+    "coverageDirectory": "../coverage",
     "coverageThreshold": {
         "global": {
-          "branches": 100,
-          "functions": 100,
-          "lines": 100,
-          "statements": 100
+            "branches": 100,
+            "functions": 100,
+            "lines": 100,
+            "statements": 100
         }
-    }
+    },
+    "moduleFileExtensions": [
+        "ts",
+        "js",
+        "json",
+        "node"
+    ]
 }

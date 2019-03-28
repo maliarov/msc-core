@@ -1,10 +1,12 @@
 {
   "name": "msc-core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "microservice chasis core",
-  "main": "source/index.js",
+  "main": "dist/lib.js",
   "scripts": {
-    "test": "jest --config ./jest.config.json"
+    "lint": "tslint --project ./ --fix",
+    "test": "jest --config ./jest.config.json",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -25,6 +27,11 @@
     "config": "1.26.2"
   },
   "devDependencies": {
-    "jest": "21.1.0"
+    "@types/config": "0.0.34",
+    "@types/jest": "23.3.2",
+    "ts-jest": "23.10.2",
+    "tslint": "5.11.0",
+    "tslint-config-airbnb": "5.11.0",
+    "typescript": "3.1.1"
   }
 }
